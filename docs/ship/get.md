@@ -4,7 +4,9 @@ Used to get ship info.
 
 **URL** : `/ship`
 
-**URL Parameters** : `ship=[string]` where `ship` is the name of the ship you want to get.
+**URL Parameters** :
+- `ship=[string]` where `ship` is the name of the ship you want to get.
+- `id=[string]` where `id` is the id of the ship you want to get.
 
 **Method** : `GET`
 
@@ -274,7 +276,9 @@ Used to get ship info.
                     "image": "https://azurlane.koumakan.jp/w/images/thumb/1/16/ASW.png/25px-ASW.png",
                     "value": "0"
                 }
-            ]
+            ],
+            "retrofit100": null,
+            "retrofit120": null
         },
         "miscellaneous": {
             "artist": {

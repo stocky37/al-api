@@ -13,13 +13,48 @@ export default class ShipGET extends BaseRoute {
     }
 
     public async run(req: Request, res: Response): Promise<Response> {
+        const reqConfig: AxiosRequestConfig = { headers: { "User-Agent": this.settings.userAgent } }
         let name: string = req.query.name;
         if (!name) {
-            return res.status(400).json({
-                statusCode: 400,
-                statusMessage: "Bad Request",
-                message: "Missing a name query param."
-            });
+            let id: string = req.query.id;
+            if (!id) {
+                return res.status(400).json({
+                    statusCode: 400,
+                    statusMessage: "Bad Request",
+                    message: "Missing a name/id query param."
+                });
+            }
+
+            id = capitalize(id);
+
+            try {
+                const resp = await axios.get("https://azurlane.koumakan.jp/List_of_Ships", reqConfig);
+                const $ = cheerio.load(resp.data);
+                const ship = $(`td[data-sort-value="${id}"]`)[0];
+                if (ship) {
+                    name = ship.firstChild.attribs.title;
+                } else {
+                    return res.status(400).json({
+                        statusCode: 400,
+                        statusMessage: "Bad Request",
+                        message: "Invalid ship id."
+                    });
+                }
+            } catch (e) {
+                if (e.response) {
+                    return res.status(e.response.status).json({
+                        statusCode: e.response.status,
+                        statusMessage: e.response.statusText,
+                        message: "Failed to get info from https://azurlane.koumakan.jp/"
+                    });
+                } else {
+                    return res.status(400).json({
+                        statusCode: 400,
+                        statusMessage: "Bad Request",
+                        message: "Failed to get info from https://azurlane.koumakan.jp/"
+                    });
+                }
+            }
         }
 
         name = name.toLowerCase()
@@ -36,21 +71,29 @@ export default class ShipGET extends BaseRoute {
         // eslint-disable-next-line init-declarations
         let response: AxiosResponse;
         try {
-            const reqConfig: AxiosRequestConfig = { headers: { "User-Agent": this.settings.userAgent } }
             response = await axios.get(`${this.settings.baseUrl}/${name}`, reqConfig);
         } catch (e) {
-            return res.status(400).json({
-                statusCode: 400,
-                statusMessage: "Bad Request",
-                message: "Invalid ship name."
-            });
+            if (e.response) {
+                return res.status(e.response.status).json({
+                    statusCode: e.response.status,
+                    statusMessage: e.response.statusText,
+                    message: "Failed to get info from https://azurlane.koumakan.jp/"
+                });
+            } else {
+                return res.status(400).json({
+                    statusCode: 400,
+                    statusMessage: "Bad Request",
+                    message: "Invalid ship name."
+                });
+            }
         }
 
         try {
             const $ = cheerio.load(response.data);
             const image = this.settings.baseUrl + $(".image img")[0].attribs.src;
             const shipdata = $("tbody tr td");
-            let nationalityShort = $("div[style='border-style:solid; border-width:1px 1px 0px 1px; border-color:#a2a9b1; width:100%; background-color:#eaecf0; text-align:center; font-weight:bold']")[0].children[0].data;
+            const shipname = $("div[style='border-style:solid; border-width:1px 1px 0px 1px; border-color:#a2a9b1; width:100%; background-color:#eaecf0; text-align:center; font-weight:bold']");
+            let nationalityShort = shipname ? shipname[0].children[0].data : null;
             if (nationalityShort) {
                 for (let i = 0; i < nations.length; i++) {
                     if (nationalityShort.includes(nations[i])) {
@@ -167,6 +210,21 @@ export default class ShipGET extends BaseRoute {
             });
             stats[100] = hundredStats;
 
+            const hundredRetrofitStats: StatsItem[] = [];
+            const hrElement = $("div[title='Level 100 Retrofit'] table tbody")[0];
+            const hrFiltered = hrElement && hrElement.children ? hrElement.children.filter((el) => el.type === "tag" && el.name === "tr") : [];
+            hrFiltered.forEach((el) => {
+                const tds = el.children.filter((e) => e.type === "tag" && e.name === "td");
+                const ths = el.children.filter((e) => e.type === "tag" && e.name === "th");
+                for (let i = 0; i < tds.length; i++) {
+                    const value = tds[i].children[0].data ? tds[i].children[0].data!.replace("\n", "") : null
+                    const name = ths[i].children[0].attribs.alt ? ths[i].children[0].attribs.alt : ths[i].children[0].attribs.title || null;
+                    const image = ths[i].children[0].attribs.src ? `${this.settings.baseUrl}${ths[i].children[0].attribs.src}` : null;
+                    hundredRetrofitStats.push({ name, image, value });
+                }
+            });
+            stats.retrofit100 = hrElement && hrElement.children ? hundredRetrofitStats : null;
+
             const hundredtwentyStats: StatsItem[] = [];
             const htElement = $("div[title='Level 120'] table tbody")[0];
             const htFiltered = htElement.children.filter((el) => el.type === "tag" && el.name === "tr");
@@ -182,15 +240,30 @@ export default class ShipGET extends BaseRoute {
             });
             stats[120] = hundredtwentyStats;
 
+            const hundredtwentyRetrofitStats: StatsItem[] = [];
+            const htrElement = $("div[title='Level 120 Retrofit'] table tbody")[0];
+            const htrFiltered = htrElement && htrElement.children ? htrElement.children.filter((el) => el.type === "tag" && el.name === "tr") : [];
+            htrFiltered.forEach((el) => {
+                const tds = el.children.filter((e) => e.type === "tag" && e.name === "td");
+                const ths = el.children.filter((e) => e.type === "tag" && e.name === "th");
+                for (let i = 0; i < tds.length; i++) {
+                    const value = tds[i].children[0].data ? tds[i].children[0].data!.replace("\n", "") : null
+                    const name = ths[i].children[0].attribs.alt ? ths[i].children[0].attribs.alt : ths[i].children[0].attribs.title || null;
+                    const image = ths[i].children[0].attribs.src ? `${this.settings.baseUrl}${ths[i].children[0].attribs.src}` : null;
+                    hundredtwentyRetrofitStats.push({ name, image, value });
+                }
+            });
+            stats.retrofit120 = hundredtwentyRetrofitStats.length >= 1 ? hundredtwentyRetrofitStats : null;
+
             const miscellaneous: Miscellaneous = {};
             const mList = $(".wikitable[style='color:black; background-color:#f8f9fa; width:100%'] tbody")[0];
             const mFiltered = mList.children.filter((i) => i.type === "tag" && i.name === "tr");
             mFiltered.forEach((i) => {
                 const children = i.children.filter((o) => o.type === "tag" && o.name === "td");
                 if (children.length >= 2) {
-                    const title = children[0].children[0].data ? children[0].children[0].data.replace("\n", "") : null;
-                    const link = children[1].children[0].attribs ? children[1].children[0].attribs.href.startsWith("/Artists") ? `${this.settings.baseUrl}${children[1].children[0].attribs.href}` : children[1].children[0].attribs.href : null;
-                    const name = children[1].children[0].children ? children[1].children[0].children[0].data || null : null;
+                    const title = children?.[0]?.children?.[0]?.data?.replace("\n", "")
+                    const link = children?.[1]?.children?.[0]?.attribs?.href?.startsWith("/Artists") ? `${this.settings.baseUrl}${children?.[1]?.children?.[0]?.attribs?.href ?? ""}` : children?.[1]?.children?.[0]?.attribs?.href ?? null;
+                    const name = children?.[1]?.children?.[0]?.children?.[0]?.data ?? null;
 
                     switch (title) {
                         case "Artist": {
@@ -212,7 +285,7 @@ export default class ShipGET extends BaseRoute {
                         case "Voice Actress": {
                             let actress = $("a.extiw")[0];
                             if (shipID && (shipID.trim() === "236" || shipID.trim() === "101")) actress = $(".external.text[rel='nofollow']")[3];
-                            miscellaneous.voiceActress = { link: actress ? actress.attribs.href : null, name: actress ? actress.children[0].data || null : null };
+                            miscellaneous.voiceActress = { link: actress?.attribs?.href ?? null, name: actress?.children?.[0]?.data ?? null };
                             break;
                         }
                     }
@@ -224,21 +297,21 @@ export default class ShipGET extends BaseRoute {
                 statusMessage: "OK",
                 message: "The request was successful",
                 ship: {
-                    wikiUrl: `${this.settings.baseUrl}/${names.en ? names.en.replace(/ /gu, "_") : ""}`,
-                    id: shipID ? shipID.trim() : null,
+                    wikiUrl: `${this.settings.baseUrl}/${names.en?.replace(/ /gu, "_") ?? ""}`,
+                    id: shipID?.trim() ?? null,
                     names: names,
                     thumbnail: image,
                     skins: skins,
-                    buildTime: buildTime ? buildTime.trim() : null,
+                    buildTime: buildTime?.trim() ?? null,
                     rarity: rarity,
                     stars: {
-                        value: stars ? stars.trim() : null,
-                        count: stars ? (stars.match(/★/gui) || []).length : 0
+                        value: stars?.trim() ?? null,
+                        count: (stars?.match(/★/gui) ?? []).length
                     },
-                    class: shipClass ? shipClass.trim() : null,
-                    nationality: nationality ? nationality.trim() : null,
-                    nationalityShort: nationalityShort ? nationalityShort.trim() : null,
-                    hullType: hullType ? hullType.trim() : null,
+                    class: shipClass?.trim() ?? null,
+                    nationality: nationality?.trim() ?? null,
+                    nationalityShort: nationalityShort?.trim() ?? null,
+                    hullType: hullType?.trim() ?? null,
                     stats: stats,
                     miscellaneous: miscellaneous
                 }
