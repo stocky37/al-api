@@ -23,7 +23,7 @@ object ShipsController {
             ctx.status(400).json(ErrorResponse(
                 statusCode = 400,
                 statusMessage = "Bad Request",
-                message = "Missing or invalid orderBy query param"
+                message = "Missing or invalid category query param"
             ))
             return
         }
@@ -37,7 +37,7 @@ object ShipsController {
                     ctx.status(400).json(ErrorResponse(
                         statusCode = 400,
                         statusMessage = "Bad Request",
-                        message = "Invalid orderBy query param"
+                        message = "Invalid category query param"
                     ))
                     return
                 }
@@ -75,7 +75,7 @@ object ShipsController {
         }
 
         rarity = rarity.split(" ")
-            .joinToString { it.capitalize() }
+            .joinToString(" ") { it.capitalize() }
 
         val isValid = Config.rarities.contains(rarity)
         if (!isValid) {
@@ -87,7 +87,7 @@ object ShipsController {
             return null
         }
 
-        return scrapeHtmlForShips(rarity)
+        return scrapeHtmlForShips(rarity, Category.RARITY)
     }
 
     private fun getShipsByType(ctx: Context): List<SmallShip>? {
@@ -102,7 +102,7 @@ object ShipsController {
         }
 
         type = type.split(" ")
-            .joinToString { it.capitalize() }
+            .joinToString(" ") { it.capitalize() }
 
         val isValid = Config.types.contains(type)
         if (!isValid) {
@@ -114,7 +114,7 @@ object ShipsController {
             return null
         }
 
-        return scrapeHtmlForShips(type)
+        return scrapeHtmlForShips(type, Category.TYPE)
     }
 
     private fun getShipsByAffiliation(ctx: Context): List<SmallShip>? {
@@ -129,7 +129,7 @@ object ShipsController {
         }
 
         affiliation = affiliation.split(" ")
-            .joinToString { it.capitalize() }
+            .joinToString(" ") { it.capitalize() }
 
         val isValid = Config.affiliations.contains(affiliation)
         if (!isValid) {
@@ -141,10 +141,10 @@ object ShipsController {
             return null
         }
 
-        return scrapeHtmlForShips(affiliation)
+        return scrapeHtmlForShips(affiliation, Category.AFFILIATION)
     }
 
-    private fun scrapeHtmlForShips(value: String) =
+    private fun scrapeHtmlForShips(value: String, category: Category) =
         skrape {
             url = "${Config.baseUrl}/List_of_Ships"
             mode = Mode.DOM
@@ -156,12 +156,24 @@ object ShipsController {
                 htmlDocument {
                     val ships = mutableListOf<SmallShip>()
                     val items = getElementsContainingOwnText(value)
-                    val vals = items.filter { it.tagName() == "td" }
-                    vals.forEach { el ->
-                        val parent = el.parent()
-                        val id = parent.child(0).attr("data-sort-value")
-                        val name = parent.child(1).child(0).attr("title")
-                        ships.add(SmallShip(name, id))
+                    when (category) {
+                        Category.RARITY -> {
+                            val vals = items.filter { it.tagName() == "td" }
+                            vals.forEach { el ->
+                                val parent = el.parent()
+                                val id = parent.child(0).attr("data-sort-value")
+                                val name = parent.child(1).child(0).attr("title")
+                                ships.add(SmallShip(name, id))
+                            }
+                        }
+                        Category.TYPE,
+                        Category.AFFILIATION -> {
+                            items.forEach { el ->
+                                val id = el.parent().parent().child(0).child(0).text()
+                                val name = el.parent().parent().child(1).child(0).text()
+                                ships.add(SmallShip(name, id))
+                            }
+                        }
                     }
 
                     ships
