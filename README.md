@@ -1,6 +1,6 @@
 # Azur Lane API
 Unofficial json api that returns azur lane data
-
+ 
 # Docs
 [kurozeropb.github.io/azurlane-api](https://kurozeropb.github.io/azurlane-api/)
 
