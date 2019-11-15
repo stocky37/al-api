@@ -5,6 +5,8 @@ group = "info.kurozeropb.azurlane"
 version = "2.0.0"
 
 plugins {
+    eclipse
+    idea
     java
     application
     kotlin("jvm") version "1.3.50"
