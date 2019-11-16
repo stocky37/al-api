@@ -252,7 +252,7 @@ object ShipController {
                         skins = skins,
                         buildTime = a { withAttribute = Pair("href", "/${ship}#Construction"); findFirst { text() } },
                         rarity = getElementsContainingOwnText("☆").first()?.child(0)?.attr("title"),
-                        starts = Stars(
+                        stars = Stars(
                             value = getElementsContainingOwnText("☆").first()?.text(),
                             count = getElementsContainingOwnText("☆").first()?.text()?.count { it == '★' } ?: 0
                         ),
