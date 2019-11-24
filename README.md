@@ -1,3 +1,6 @@
+# Notice 
+For anyone wondering, **yes**.. When the fork was created, the API used to not be behind a 2$/m Patreon paywall.. :smiley:
+
 # Azur Lane API
 Unofficial json api that returns azur lane data
  
